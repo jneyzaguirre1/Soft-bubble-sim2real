@@ -9,25 +9,41 @@ import open3d as o3d
 import matplotlib.pyplot as plt
 import copy
 import cv2
+import scipy.ndimage
+from math import ceil
+from soft_bubble_sim import *
 
 
-def soft_bubble_sim(depth_image, bg_depth=10, k_size=11, gk_size=11, sigma=20):
-    # Lets start creating the soft edges from the figure
-    mask, edges = soft_edges(depth_image, bg_depth, k_size, gk_size, sigma)
-    # Now lets combine the edges with the original image, and filter them to smooth the result
-    mask_inv = np.float32(mask < 1.0)
-    combination = depth_gt * mask_inv + edges
-    out = cv2.GaussianBlur(combination, ksize=(3,3), sigmaX=1, sigmaY=1)
-    return combination, out
+def render_mesh(mesh, img_size, intrinsics, extrinsics, H=np.eye(4, dtype=np.double)):
+    # Lets center the figure first
+    mesh_center = mesh.get_center()
+    mesh.translate(-mesh_center, relative=True)
+    
+    # Image size
+    img_width, img_height = img_size
 
-def soft_edges(depth_image, bg_depth=10, k_size=11, gk_size=11, sigma=20):
-    mask = np.float32(depth_image < bg_depth)
-    kernel = np.ones((k_size, k_size), dtype=np.uint8)
-    mask_dil = cv2.dilate(mask, kernel, iterations = 1)
-    mask_inv = (1.0 - mask) * mask_dil
-    blur = cv2.GaussianBlur(depth_image, ksize=(gk_size,gk_size), sigmaX=sigma, sigmaY=sigma)
-    edges = mask_inv * blur
-    return mask_inv, edges
+    # Create a renderer with the desired image size
+    render = o3d.visualization.rendering.OffscreenRenderer(img_width, img_height)
+    scene = render.scene
+
+    # Lets transform the mesh to a different location
+    mesh_t = copy.deepcopy(mesh)
+    mesh_t.transform(H)
+    H_co = extrinsics @ H   # RBT between from camera to obj.
+
+    # Define a simple unlit Material.
+    mtl = o3d.visualization.rendering.MaterialRecord()  # or Material(), for prior versions of Open3D
+    mtl.base_color = [1.0, 1.0, 1.0, 1.0]  # RGBA
+    mtl.shader = "defaultUnlit"
+
+    # Add the mesh to the scene.
+    render.scene.add_geometry("transformed_model", mesh_t, mtl)
+    render.setup_camera(intrinsics, extrinsics, img_width, img_height)
+
+    # Render to depth from camera position and simulate the soft-bubble output
+    depth_no_bg = np.asarray(render.render_to_depth_image(z_in_view_space=True))
+    depth_no_bg = np.where(np.isfinite(depth_no_bg), depth_no_bg, 0)                   # add background
+    return depth_no_bg, H_co
 
 
 if __name__ == "__main__":
@@ -43,67 +59,46 @@ if __name__ == "__main__":
     create_torus(torus_radius=1.0, tube_radius=0.5, radial_resolution=30, tubular_resolution=20)
     create_tetrahedron(radius=1.0, create_uv_map=False)
     """
+    # params:
+    BG_DEPTH = 10.0     # background depth
+    m = 2.5             # Relative slope
+
     mesh = o3d.geometry.TriangleMesh.create_box()
     mesh.compute_triangle_normals()
     mesh.compute_vertex_normals()
 
-    # Lets center the figure first
-    mesh_center = mesh.get_center()
-    mesh.translate(-mesh_center, relative=True)
-    
-    # Camera properties and position
-    img_width, img_height = 120, 150
-    intrinsics = np.array([[250.0, 0,  img_width/2],
-                           [0, 250.0, img_height/2],
-                           [0,     0,            1]], dtype=np.double)
+    img_size = (120, 150)
+    intrinsics = np.array([[250.0, 0, img_size[0]/2],
+                           [0, 250.0, img_size[1]/2],
+                           [0,     0,             1]], dtype=np.double)
     extrinsics = np.array([[1.0, 0.0, 0.0, 0.0], 
                            [0.0, 1.0, 0.0, 0.0],
                            [0.0, 0.0, 1.0, 6.0],
                            [0.0, 0.0, 0.0, 1.0]], dtype=np.double)
+    
+    R = mesh.get_rotation_matrix_from_xyz((np.pi / 4, 0, np.pi/4))
+    t = np.array([0, 0, 0], dtype=np.double).reshape(3,1)
+    H = np.block([[R, t], [np.zeros((1,3), dtype=np.double), 1.0]])
 
-    # Create a renderer with the desired image size
-    render = o3d.visualization.rendering.OffscreenRenderer(img_width, img_height)
+    depth_no_bg, H_co = render_mesh(mesh, img_size, intrinsics, extrinsics, H=H)
 
-    # Lets transform the mesh to different locations
-    R = mesh.get_rotation_matrix_from_xyz((np.pi / 8, 0, 0*np.pi/4))
-    translation = np.array([0, 0, 0], dtype=np.double)
-    mesh_t = copy.deepcopy(mesh)
-    mesh_t.rotate(R, center=(0, 0, 0))
-    mesh_t.translate(translation, relative=True)
-
-    # Define a simple unlit Material.
-    mtl = o3d.visualization.rendering.MaterialRecord()  # or Material(), for prior versions of Open3D
-    mtl.base_color = [1.0, 1.0, 1.0, 1.0]  # RGBA
-    mtl.shader = "defaultUnlit"
-
-    # Add the mesh to the scene.
-    render.scene.add_geometry("rotated_model", mesh_t, mtl)
-    render.setup_camera(intrinsics, extrinsics, img_width, img_height)
-
-    # Render to depth from camera position and simulate the soft-bubble output
-    bg_depth = 10.0
-    depth_gt = np.asarray(render.render_to_depth_image(z_in_view_space=True))
-    depth_gt = np.where(np.isfinite(depth_gt), depth_gt, bg_depth)                          # add background
-    depth_sim0, depth_sim1 = soft_edges(depth_gt, bg_depth=bg_depth)
-    depth_sim2, depth_sim3 = soft_bubble_sim(depth_gt, bg_depth=bg_depth)
+    depth_gt, depth_sim0, depth_sim1, depth_sim2, depth_sim3 = simulate_soft_bubble(depth_no_bg, bg_depth=BG_DEPTH, m=m)
 
     # Display the image in a separate window
     fig, axs = plt.subplots(1, 5, sharex=True, sharey=True)
+    fig.suptitle(f"Edge linear decay process for a relative slope of {m}")
     axs[0].imshow(depth_gt, cmap='gray_r')
-    axs[0].title.set_text('Ground Truth depth image')
+    axs[0].title.set_text('Ground Truth depth')
 
-    axs[1].imshow(depth_sim0, cmap='gray')
-    axs[1].title.set_text('Edges mask')
+    axs[1].imshow(depth_sim0, cmap='gray_r')
+    axs[1].title.set_text('Object mask')
     
-    axs[2].imshow(depth_sim1, cmap='gray')
-    axs[2].title.set_text('Edges')
+    axs[2].imshow(depth_sim1, cmap='gray_r')
+    axs[2].title.set_text('Norm dist. transf.')
     
     axs[3].imshow(depth_sim2, cmap='gray_r')
-    axs[3].title.set_text('Edges + ground truth')
+    axs[3].title.set_text('Scale dist. transf.')
     
     axs[4].imshow(depth_sim3, cmap='gray_r')
-    axs[4].title.set_text('Edges + ground truth filtered')
+    axs[4].title.set_text('Scale dist. transf. clipped to bg')
     plt.show()
-
-    # Optionally write it to a PNG file
-    #o3d.io.write_image("output.png", depth, 9)

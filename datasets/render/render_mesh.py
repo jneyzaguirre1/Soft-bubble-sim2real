@@ -89,12 +89,13 @@ if __name__ == "__main__":
     render_obj = Renderer(img_size, intrinsics, extrinsics, BG_DEPTH, m)
     render_obj2 = Renderer(img_size, intrinsics, extrinsics, BG_DEPTH, m2)
     
-    mesh = o3d.geometry.TriangleMesh.create_torus()
+    a = 1
+    mesh = o3d.geometry.TriangleMesh.create_box(a, a, a)
     mesh.compute_triangle_normals()
     mesh.compute_vertex_normals()
     
     R = mesh.get_rotation_matrix_from_xyz((0 * np.pi / 4, 0 * np.pi / 2, 0 * np.pi / 4))
-    t = np.array([0, 0, 0], dtype=np.double).reshape(3,1)
+    t = np.array([1.5, 0, 0.], dtype=np.double).reshape(3,1)
     H = np.block([[R, t], [np.zeros((1,3), dtype=np.double), 1.0]])
 
     depth_no_bg, H_co = render_obj.render_mesh(mesh, H=H)
@@ -104,27 +105,27 @@ if __name__ == "__main__":
     _, depth_sim4_2 = render_obj2.simulate_soft_bubble(depth_no_bg)
 
     # Display the image in a separate window
-    fig, axs = plt.subplots(1, 2, sharex=True, sharey=True)
-    #fig.suptitle(f"Edge linear decay process for a relative slope of {m}")
-    axs[0].imshow(depth_gt, cmap='gray_r')
-    axs[0].title.set_text('Ground Truth depth')
+    # fig, axs = plt.subplots(1, 2, sharex=True, sharey=True)
+    # #fig.suptitle(f"Edge linear decay process for a relative slope of {m}")
+    # axs[0].imshow(depth_gt, cmap='gray_r')
+    # axs[0].title.set_text('Ground Truth depth')
 
-    axs[1].imshow(depth_sim0, cmap='gray_r')
-    axs[1].title.set_text('Object mask')
+    # axs[1].imshow(depth_sim0, cmap='gray_r')
+    # axs[1].title.set_text('Object mask')
     
-    fig1, axs1 = plt.subplots(1, 2, sharex=True, sharey=True)
-    axs1[0].imshow(depth_sim1, cmap='gray_r')
-    axs1[0].title.set_text('Normed distance transf.')
+    # fig1, axs1 = plt.subplots(1, 2, sharex=True, sharey=True)
+    # axs1[0].imshow(depth_sim1, cmap='gray_r')
+    # axs1[0].title.set_text('Normed distance transf.')
     
-    axs1[1].imshow(depth_sim2, cmap='gray_r')
-    axs1[1].title.set_text('Slope adjusted distance transf.')
+    # axs1[1].imshow(depth_sim2, cmap='gray_r')
+    # axs1[1].title.set_text('Slope adjusted distance transf.')
     
-    fig2, axs2 = plt.subplots(1, 2, sharex=True, sharey=True)
-    axs2[0].imshow(depth_sim3, cmap='gray_r')
-    axs2[0].title.set_text('Edge adjusted decay')
+    # fig2, axs2 = plt.subplots(1, 2, sharex=True, sharey=True)
+    # axs2[0].imshow(depth_sim3, cmap='gray_r')
+    # axs2[0].title.set_text('Edge adjusted decay')
     
-    axs2[1].imshow(depth_sim4, cmap='gray_r')
-    axs2[1].title.set_text('Background clipped output')
+    # axs2[1].imshow(depth_sim4, cmap='gray_r')
+    # axs2[1].title.set_text('Background clipped output')
 
     fig3, axs3 = plt.subplots(1, 3, sharex=True, sharey=True)
     axs3[0].imshow(depth_gt, cmap='gray_r')

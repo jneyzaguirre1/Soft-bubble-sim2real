@@ -5,7 +5,7 @@ from data_collector.data_collector import MyImageDataCollector
 
 if __name__ == "__main__":
     kwargs = {}
-    my_data_dir = '/home/jneyza/datasets/toy_dataset/'
+    my_data_dir = './datasets/toy_dataset/'
     my_data_name = 'toy1'
     img_size = (120, 150)
     kwargs['data_path'] = os.path.join(my_data_dir, my_data_name)

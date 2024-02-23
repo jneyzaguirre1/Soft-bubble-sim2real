@@ -5,10 +5,10 @@ from data_collector.data_collector import MyImageDataCollector
 
 if __name__ == "__main__":
     kwargs = {}
-    my_data_dir = 'datasets/toy_dataset/'
+    my_data_dir = '/home/jneyza/datasets/toy_dataset/'
     my_data_name = 'toy1'
     img_size = (120, 150)
-    my_data_path = os.path.join(my_data_dir, my_data_name)
+    kwargs['data_path'] = os.path.join(my_data_dir, my_data_name)
     kwargs['scene_name'] = 'scene_test'
     kwargs['camera_name'] = "camera1"
     kwargs['img_size'] = img_size
@@ -24,5 +24,5 @@ if __name__ == "__main__":
     kwargs['bg_depth'] = 10.0
     kwargs['slope'] = 1.5
     kwargs['obj_count'] = 2
-    dc = MyImageDataCollector(my_data_path, **kwargs)
+    dc = MyImageDataCollector(**kwargs)
     dc.collect_data(num_data=6)

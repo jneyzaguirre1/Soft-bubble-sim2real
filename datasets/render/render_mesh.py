@@ -12,6 +12,7 @@ import scipy.ndimage
 
 
 class Renderer:
+
     def __init__(self, img_size, intrinsics, extrinsics, bg_depth, slope):
         self.img_size = img_size
         self.intrinsics = intrinsics
@@ -41,7 +42,7 @@ class Renderer:
 
         # Add the mesh to the scene.
         render.scene.add_geometry("transformed_model", mesh_t, mtl)
-        render.setup_camera(self.intrinsics, self.extrinsics, self.img_size[1], self.img_size[0])
+        render.setup_camera(self.intrinsics, self.extrinsics, img_width, img_height)
 
         # Render to depth from camera position and simulate the soft-bubble output
         depth_no_bg = np.asarray(render.render_to_depth_image(z_in_view_space=True))
@@ -57,23 +58,24 @@ class Renderer:
     def simulate_soft_bubble(self, depth_image, DEBUG=False):
         mask_obj = np.where(depth_image != 0, 0, 1).astype(np.float32)
         dist_transform, idx = scipy.ndimage.distance_transform_edt(mask_obj, return_distances=True, return_indices=True)
-        dist_transform = dist_transform.astype(np.float32)
-        dist_transform_normalized = 1. + self.slope * cv2.normalize(dist_transform, None, 0, 1, cv2.NORM_MINMAX)
+        dist_transform_normed = cv2.normalize(dist_transform.astype(np.float32), None, 0, 1, cv2.NORM_MINMAX)
+        dist_transform_sloped = 1. + self.slope * dist_transform_normed
         row_idx, col_idx = idx
         near_edge_value = depth_image[row_idx, col_idx]
-        dist_scaled = dist_transform_normalized * near_edge_value
-        linear_decay = np.clip(dist_scaled, 0, self.bg_depth)
+        dist_scaled = dist_transform_sloped * near_edge_value
+        out = np.clip(dist_scaled, 0, self.bg_depth)
         depth_gt = np.where(depth_image != 0, depth_image, self.bg_depth).astype(np.float32)
         if DEBUG:
-            return depth_gt, mask_obj, dist_transform_normalized, dist_scaled, linear_decay
+            return depth_gt, mask_obj, dist_transform_normed, dist_transform_sloped, dist_scaled, out
         else:
-            return depth_gt, linear_decay
+            return depth_gt, out
 
 
 if __name__ == "__main__":
     # params:
     BG_DEPTH = 10.0     # background depth
-    m = 2.5             # Relative slope
+    m = 1.5             # Relative slope
+    m2 = 2.5
 
     img_size = (120, 150)
     intrinsics = np.array([[250.0, 0, img_size[0]/2],
@@ -85,36 +87,57 @@ if __name__ == "__main__":
                            [0.0, 0.0, 0.0, 1.0]], dtype=np.double)
     
     render_obj = Renderer(img_size, intrinsics, extrinsics, BG_DEPTH, m)
-
-    mesh = o3d.geometry.TriangleMesh.create_box()
+    render_obj2 = Renderer(img_size, intrinsics, extrinsics, BG_DEPTH, m2)
+    
+    mesh = o3d.geometry.TriangleMesh.create_torus()
     mesh.compute_triangle_normals()
     mesh.compute_vertex_normals()
-
     
-    
-    R = mesh.get_rotation_matrix_from_xyz((np.pi / 4, 0, np.pi/4))
+    R = mesh.get_rotation_matrix_from_xyz((0 * np.pi / 4, 0 * np.pi / 2, 0 * np.pi / 4))
     t = np.array([0, 0, 0], dtype=np.double).reshape(3,1)
     H = np.block([[R, t], [np.zeros((1,3), dtype=np.double), 1.0]])
 
     depth_no_bg, H_co = render_obj.render_mesh(mesh, H=H)
+    depth_no_bg2, H_co2 = render_obj2.render_mesh(mesh, H=H)
 
-    depth_gt, depth_sim0, depth_sim1, depth_sim2, depth_sim3 = render_obj.simulate_soft_bubble(depth_no_bg, DEBUG=True)
+    depth_gt, depth_sim0, depth_sim1, depth_sim2, depth_sim3, depth_sim4 = render_obj.simulate_soft_bubble(depth_no_bg, DEBUG=True)
+    _, depth_sim4_2 = render_obj2.simulate_soft_bubble(depth_no_bg)
 
     # Display the image in a separate window
-    fig, axs = plt.subplots(1, 5, sharex=True, sharey=True)
-    fig.suptitle(f"Edge linear decay process for a relative slope of {m}")
+    fig, axs = plt.subplots(1, 2, sharex=True, sharey=True)
+    #fig.suptitle(f"Edge linear decay process for a relative slope of {m}")
     axs[0].imshow(depth_gt, cmap='gray_r')
     axs[0].title.set_text('Ground Truth depth')
 
     axs[1].imshow(depth_sim0, cmap='gray_r')
     axs[1].title.set_text('Object mask')
     
-    axs[2].imshow(depth_sim1, cmap='gray_r')
-    axs[2].title.set_text('Norm dist. transf.')
+    fig1, axs1 = plt.subplots(1, 2, sharex=True, sharey=True)
+    axs1[0].imshow(depth_sim1, cmap='gray_r')
+    axs1[0].title.set_text('Normed distance transf.')
     
-    axs[3].imshow(depth_sim2, cmap='gray_r')
-    axs[3].title.set_text('Scale dist. transf.')
+    axs1[1].imshow(depth_sim2, cmap='gray_r')
+    axs1[1].title.set_text('Slope adjusted distance transf.')
     
-    axs[4].imshow(depth_sim3, cmap='gray_r')
-    axs[4].title.set_text('Scale dist. transf. clipped to bg')
+    fig2, axs2 = plt.subplots(1, 2, sharex=True, sharey=True)
+    axs2[0].imshow(depth_sim3, cmap='gray_r')
+    axs2[0].title.set_text('Edge adjusted decay')
+    
+    axs2[1].imshow(depth_sim4, cmap='gray_r')
+    axs2[1].title.set_text('Background clipped output')
+
+    fig3, axs3 = plt.subplots(1, 3, sharex=True, sharey=True)
+    axs3[0].imshow(depth_gt, cmap='gray_r')
+    axs3[0].title.set_text('Ground Truth depth')
+    
+    axs3[1].imshow(depth_sim4, cmap='gray_r')
+    axs3[1].title.set_text(f"Output, slope={m}")
+
+    axs3[2].imshow(depth_sim4_2, cmap='gray_r')
+    axs3[2].title.set_text(f"Output, slope={m2}")
+    
+    # plt.figure()
+    # plt.imshow(depth_gt, cmap='gray_r')
+    # plt.title('Ground Truth Depth')
+    
     plt.show()

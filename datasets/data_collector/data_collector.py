@@ -1,6 +1,6 @@
 import numpy as np
 from mmint_tools.dataset_tools.data_collection import DataCollectorBase
-from mmint_tools.recording_utils.recording_utils import record_image_depth, record_image_color
+from mmint_tools.recording_utils.recording_utils import record_image_depth, record_image_color, record_array
 from data_collector.mesh_generator import MeshGenerator
 from render.render_mesh import Renderer
 
@@ -13,6 +13,7 @@ class MyImageDataCollector(DataCollectorBase):
 
         self.scene_name = kwargs['scene_name']
         self.camera_name = kwargs['camera_name']
+        self.camera_sim_name = "bubble_sim"
         self.img_size = kwargs['img_size']
         self.cam_int = kwargs['cam_int']
         self.cam_ext = kwargs['cam_ext']
@@ -59,6 +60,7 @@ class MyImageDataCollector(DataCollectorBase):
         Returns: <dict> containing the parameters of the collected sample
         """
         # here, since it is a test, the data will be collected at random
+        #breakpoint()
         sample_indx = self.get_new_filecode()
         scene_name = self.scene_name                 
         camera_name = self.camera_name
@@ -78,8 +80,12 @@ class MyImageDataCollector(DataCollectorBase):
 
         # record the image
         record_image_depth(img=depth_gt, save_path=self.data_path, fc=sample_indx, scene_name=scene_name, camera_name=camera_name)
-        record_image_depth(img=depth_sim, save_path=self.data_path, fc=sample_indx, scene_name=scene_name, camera_name=camera_name)
+        record_image_depth(img=depth_sim, save_path=self.data_path, fc=sample_indx, scene_name=scene_name, camera_name=self.camera_sim_name)
         
+        record_array(camera_extrinsics, save_path=self.data_path, fc=sample_indx, scene_name=scene_name, array_name='camera_exrinsics')
+        record_array(camera_intrinsics, save_path=self.data_path, fc=sample_indx, scene_name=scene_name, array_name='camera_instrinsics')
+        record_array(transformation, save_path=self.data_path, fc=sample_indx, scene_name=scene_name, array_name='transformation')
+
         sample_params = {
             'sample_indx': sample_indx,
             'scene_name': scene_name,

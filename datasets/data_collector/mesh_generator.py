@@ -81,9 +81,9 @@ class MeshGenerator:
     
     def create_torus(self):
         name = 'torus'
-        delta = 0.2
+        delta = 0.1
         torus_radius = np.random.uniform(0.2, 1.0)
-        tube_radius = np.random.uniform(torus_radius/2 - delta, torus_radius/2 + delta)
+        tube_radius = np.random.uniform(torus_radius/2 - delta/2, torus_radius/2 + delta/2)
         params = {'torus_radius':torus_radius, 'tube_radius':tube_radius}
         mesh = o3d.geometry.TriangleMesh.create_torus(torus_radius=torus_radius, tube_radius=tube_radius, radial_resolution=30, tubular_resolution=20)
         return name, params, mesh

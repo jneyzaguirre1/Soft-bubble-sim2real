@@ -31,7 +31,6 @@ if __name__ == "__main__":
     kwargs['debug'] = False
     kwargs['obj_count'] = IMAGE_PAIRS_PER_OBJ
     
-    
     dc = MyImageDataCollector(**kwargs)
     num_data = OBJS * IMAGE_PAIRS_PER_OBJ
     dc.collect_data(num_data=num_data)

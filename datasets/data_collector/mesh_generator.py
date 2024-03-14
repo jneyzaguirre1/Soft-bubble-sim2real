@@ -1,6 +1,9 @@
+import os
+os.environ["OPEN3D_MUTE_LOG"] = "true"
 import open3d as o3d
 import numpy as np
 
+o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Warning)
 
 class MeshGenerator:
     """
@@ -26,7 +29,8 @@ class MeshGenerator:
         elif idx == 4: return self.create_tetrahedron()
         elif idx == 5: return self.create_icosahedron()
         elif idx == 6: return self.create_octahedron()
-        else: return self.create_torus()
+        elif idx == 7: return self.create_torus()
+        else: self.exception(idx)
 
     def create_box(self):
         name = 'box'
@@ -87,5 +91,17 @@ class MeshGenerator:
         params = {'torus_radius':torus_radius, 'tube_radius':tube_radius}
         mesh = o3d.geometry.TriangleMesh.create_torus(torus_radius=torus_radius, tube_radius=tube_radius, radial_resolution=30, tubular_resolution=20)
         return name, params, mesh
+    
+    def exception(self, idx):
+        msg = (f"The id {idx} does not match any of the object ids:\n"
+                    "box           :   0\n"
+                    "sphere        :   1\n"
+                    "cylinder      :   2\n"
+                    "cone          :   3\n"
+                    "tetrahedron   :   4\n"
+                    "icosahedron   :   5\n"
+                    "octahedron    :   6\n"
+                    "torus         :   7\n")
+        raise ValueError(msg)
     
 

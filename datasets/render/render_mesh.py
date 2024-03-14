@@ -2,13 +2,16 @@
 Code based from answer in stack overflow:
 https://stackoverflow.com/questions/67179977/unable-to-render-a-specific-view-of-a-object-in-open3d/67613280#67613280
 """
-
+import os
+os.environ["OPEN3D_MUTE_LOG"] = "true"
 import numpy as np
 import open3d as o3d
 import matplotlib.pyplot as plt
 import copy
 import cv2
 import scipy.ndimage
+
+o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Warning)
 
 
 class Renderer:

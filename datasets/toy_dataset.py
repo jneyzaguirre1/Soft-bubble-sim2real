@@ -6,11 +6,11 @@ from data_collector.data_collector import MyImageDataCollector
 if __name__ == "__main__":
     OBJS = 8
     IMAGE_PAIRS_PER_OBJ = 1250
+    my_data_dir = './datasets/toy_dataset/'
+    my_data_name = 'serious_toyX'
+    img_size = (120, 150)
 
     kwargs = {}
-    my_data_dir = './datasets/toy_dataset/'
-    my_data_name = 'serious_toy1'
-    img_size = (120, 150)
     kwargs['obj_index'] = None          # specify just one type of object!
     kwargs['data_path'] = os.path.join(my_data_dir, my_data_name)
     kwargs['scene_name'] = 'scene_test'

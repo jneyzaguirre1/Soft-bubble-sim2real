@@ -1,8 +1,8 @@
 import numpy as np
 from mmint_tools.dataset_tools.data_collection import DataCollectorBase
 from mmint_tools.recording_utils.recording_utils import record_image_depth, record_image_color, record_array
-from data_collector.mesh_generator import MeshGenerator
-from render.render_mesh import Renderer
+from datasets.data_collector.mesh_generator import MeshGenerator
+from datasets.render.render_mesh import Renderer
 import matplotlib.pyplot as plt
 
 
@@ -13,8 +13,8 @@ class MyImageDataCollector(DataCollectorBase):
         super().__init__(data_path) # TODO: modified
 
         self.scene_name = kwargs['scene_name']
-        self.cam_name = kwargs['camera_name']
-        self.bubble_cam_name = kwargs['bubble_camera_name']
+        self.cam_name = kwargs['camera_name']                   # beauty depth
+        self.bubble_cam_name = kwargs['bubble_camera_name']     # soft bubble depth
         self.img_size = kwargs['img_size']
         self.cam_int = kwargs['cam_int']
         self.cam_ext = kwargs['cam_ext']

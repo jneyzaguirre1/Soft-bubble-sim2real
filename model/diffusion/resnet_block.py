@@ -4,7 +4,7 @@ from einops import rearrange, reduce
 import torch
 from torch import nn
 import torch.nn.functional as F
-from utils.helpers import *
+from model.utils.helpers import *
 
 
 class WeightStandardizedConv2d(nn.Conv2d):

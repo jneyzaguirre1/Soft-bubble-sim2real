@@ -3,11 +3,11 @@ from functools import partial
 import torch
 from torch import nn
 
-from utils.helpers import default, Residual, Downsample, Upsample
-from model.resnet_block import ResnetBlock
-from model.position_embeddings import SinusoidalPositionEmbeddings
-from model.attention import Attention, LinearAttention
-from model.group_norm import PreNorm
+from model.utils.helpers import default, Residual, Downsample, Upsample
+from model.diffusion.resnet_block import ResnetBlock
+from model.diffusion.position_embeddings import SinusoidalPositionEmbeddings
+from model.diffusion.attention import Attention, LinearAttention
+from model.diffusion.group_norm import PreNorm
 
 
 class Unet(nn.Module):
@@ -53,7 +53,7 @@ class Unet(nn.Module):
 
         for ind, (dim_in, dim_out) in enumerate(in_out):
             is_last = ind >= (num_resolutions - 1)
-
+            
             self.downs.append(
                 nn.ModuleList(
                     [

@@ -23,6 +23,11 @@ def num_to_groups(num, divisor):
         arr.append(remainder)
     return arr
 
+def extract(a, t, x_shape):
+    batch_size = t.shape[0]
+    out = a.gather(-1, t.cpu())
+    return out.reshape(batch_size, *((1,) * (len(x_shape) - 1))).to(t.device)
+
 
 class Residual(nn.Module):
     def __init__(self, fn):

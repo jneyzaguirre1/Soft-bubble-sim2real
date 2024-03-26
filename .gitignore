@@ -5,3 +5,5 @@ __pycache__/
 *.jpg
 
 data/datasets
+results
+.ipynb_checkpoints
